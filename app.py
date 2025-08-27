@@ -2,9 +2,10 @@ from flask import Flask, render_template, request, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import uuid
 import random
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-here')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Хранилище пользователей и комнат
@@ -26,16 +27,15 @@ def handle_connect():
         'in_call': False
     }
     print(f'User {user_id} connected')
+    emit('connection_established')
 
 @socketio.on('disconnect')
 def handle_disconnect():
     user_id = session.get('user_id')
     if user_id in users:
-        # Если пользователь в очереди, удаляем его
         if user_id in waiting_users:
             waiting_users.remove(user_id)
         
-        # Если пользователь в комнате, выходим из нее
         user_data = users[user_id]
         if user_data['in_call']:
             for room_id, room_users in rooms.items():
@@ -66,7 +66,6 @@ def handle_start_search():
         waiting_users.append(user_id)
         users[user_id]['in_call'] = False
         
-        # Пытаемся найти пару
         if len(waiting_users) >= 2:
             user1_id = waiting_users.pop(0)
             user2_id = waiting_users.pop(0)
@@ -77,11 +76,9 @@ def handle_start_search():
             users[user1_id]['in_call'] = True
             users[user2_id]['in_call'] = True
             
-            # Присоединяем пользователей к комнате
             join_room(room_id, users[user1_id]['sid'])
             join_room(room_id, users[user2_id]['sid'])
             
-            # Отправляем информацию о партнере
             emit('call_started', {
                 'partner_username': users[user2_id]['username'],
                 'room_id': room_id
@@ -110,17 +107,14 @@ def handle_end_call():
     if user_data['in_call']:
         for room_id, room_users in rooms.items():
             if user_id in room_users:
-                # Уведомляем партнера
                 partner_id = next((uid for uid in room_users if uid != user_id), None)
                 if partner_id:
                     emit('partner_left', room=users[partner_id]['sid'])
                 
-                # Удаляем пользователя из комнаты
                 room_users.remove(user_id)
                 leave_room(room_id)
                 user_data['in_call'] = False
                 
-                # Если комната пустая, удаляем ее
                 if len(room_users) == 0:
                     del rooms[room_id]
                 break
@@ -171,4 +165,6 @@ def handle_ice_candidate(data):
                     }, room=users[partner_id]['sid'])
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    socketio.run(app, debug=debug, host='0.0.0.0', port=port)
