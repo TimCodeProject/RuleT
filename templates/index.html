@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Roulette</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div id="login-screen" class="screen">
+            <h1>Chat Roulette</h1>
+            <div class="form-group">
+                <input type="text" id="username" placeholder="Введите ваше имя" maxlength="20">
+                <button onclick="setUsername()">Начать общение</button>
+            </div>
+        </div>
+
+        <div id="waiting-screen" class="screen hidden">
+            <h2>Поиск собеседника...</h2>
+            <div class="loading"></div>
+            <button onclick="stopSearch()">Отменить поиск</button>
+        </div>
+
+        <div id="call-screen" class="screen hidden">
+            <h2>Разговор с: <span id="partner-name"></span></h2>
+            
+            <div class="video-container">
+                <div class="video-wrapper">
+                    <video id="local-video" autoplay muted></video>
+                    <span>Вы</span>
+                </div>
+                <div class="video-wrapper">
+                    <video id="remote-video" autoplay></video>
+                    <span id="partner-video-label">Собеседник</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="mute-btn" onclick="toggleMute()">🔇</button>
+                <button id="video-btn" onclick="toggleVideo()">📹</button>
+                <button id="end-call-btn" onclick="endCall()">📞</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
